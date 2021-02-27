@@ -94,8 +94,6 @@ class Url_processor:
 							
 			f.close()
 		
-
-# if __name__ == "__main__":
 def runResourceCollector(country):
 		up=Url_processor(country)
 		up.find_cdn()
@@ -103,3 +101,6 @@ def runResourceCollector(country):
 		up.dump(join(project_path, "analysis", "measurements", country))
 		# up.dump("measurements/"+country)
 		del up
+
+if __name__ == "__main__":
+	runResourceCollector('India')
