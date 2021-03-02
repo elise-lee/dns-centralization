@@ -17,41 +17,53 @@ class OverlapCalculator():
         # Maps countries to their percentage overlap with the global 50
         self.countryOverlap = {}
 
+        # Maps country code to country name
+        self.countryCodesToNames = {}
+
     # Populates self.globalURLS and self.countryURLS
     def ingestData(self):
-        self.globalURLs = self.getAlexa500Global()
+        self.globalURLs = self.getAlexaGlobal()
         self.countryURLS = self.getAlexaTop50Countries()
+        self.countryCodesToNames = self.getCountryCodesToNames()
 
     # Populates self.globalURLS from CSV
-    def getAlexa500Global(self):
+    def getAlexaGlobal(self):
         globalURLS = set()
-        csvPath = f"{self.rootDir}/data/alexaTop500SitesGlobal.csv"
-        with open(csvPath, mode="r") as csvFile:
-            csvReader = csv.reader(csvFile)
-            header = True
-            for row in csvReader:
-                if header:
-                    header = False
-                    continue
-                globalURLS.add(row[1])
+        path = f"alexa_100k/websites_44699.txt"
+        with open(path, mode="r") as globalFile:
+            lines = globalFile.readlines()
+            for line in lines:
+                if "DataUrl" in line:
+                    cleanLine = line.strip()
+                    url = cleanLine.split('"')[3]
+                    globalURLS.add(url)
         return globalURLS
 
     # Populates self.countryURLS from JSON
     def getAlexaTop50Countries(self):
         countryURLS = {}
-        jsonPath = f"{self.rootDir}/data/alexaTop50SitesCountries.json"
+        jsonPath = f"{self.rootDir}/data/alexaTop500SitesCountries.json"
         with open(jsonPath, mode="r") as jsonFile:
             jsonData = json.load(jsonFile)
         for country, sites in jsonData.items():
             URLS = []
             for site in sites:
-                URLS.append(site['Site'])
+                URLS.append(site)
             countryURLS[country] = URLS
         return countryURLS
 
-    # Calculate the overlap between each country's top 50 and the global top 500
+    def getCountryCodesToNames(self):
+        countryCodesToNames = {}
+        jsonPath = f"{self.rootDir}/data/countryCodesToNames.json"
+        with open(jsonPath, mode="r") as jsonFile:
+            jsonData = json.load(jsonFile)
+        for code, name in jsonData.items():
+            countryCodesToNames[code] = name
+        return countryCodesToNames
+
+    # Calculate the overlap between each country's sites and the global sites
     def calculateOverlap(self):
-        NUM_SITES_PER_COUNTRY = 50
+        NUM_SITES_PER_COUNTRY = 500
         for country, sites in self.countryURLS.items():
             numOverlap = 0
             for site in sites:
@@ -61,18 +73,19 @@ class OverlapCalculator():
 
     # Print table of countries with their respective overlaps
     def printOverlap(self):
-        table = PrettyTable(["Country", "Percentage Overlap"])
+        table = PrettyTable(["Country Name", "Country Code", "Percentage Overlap"])
 
         # Sort from highest to lowest overlap
         sortedCountryOverlap = sorted(self.countryOverlap.items(),
                                       key=lambda kv: kv[1],
                                       reverse=True)
 
-        for country, overlap in sortedCountryOverlap:
+        for countryCode, overlap in sortedCountryOverlap:
             overlapFormatted = f"{round(overlap * 100, 1)}%"
-            table.add_row([country, overlapFormatted])
+            countryName = self.countryCodesToNames[countryCode]
+            table.add_row([countryName, countryCode, overlapFormatted])
 
-        print("ALEXA SITE OVERLAP BETWEEN COUNTRY TOP 50 and GLOBAL TOP 500")
+        print("ALEXA SITE OVERLAP BETWEEN COUNTRY AND GLOBAL")
         print(table)
 
 def runProgram():

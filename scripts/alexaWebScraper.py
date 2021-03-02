@@ -53,22 +53,8 @@ def convertDictToJson(dict, jsonFileName):
     with open(jsonFileName, "w") as outfile:
         json.dump(dict, outfile, indent = 4)
 
-def joinFiles():
-    dict = {}
-    files = [
-        "alexaTop500SitesRegional0_10.json",
-        "alexaTop500SitesRegional11_37.json",
-        "alexaTop500SitesRegional.json"
-    ]
-    for f in files:
-        with open(f, "r") as infile:
-            f_dict = json.load(infile)
-            dict.update(f_dict)
-    convertDictToJson(dict, "alexaTop500SitesCountries.json")
-
 
 def runProgram():
-   # joinFiles()
 
    # Hardcodes cookies to scrape top 500 URLS for each country. Stops working after 20 countries.
    # Must hardcode your own cookies (after logging in)
@@ -85,10 +71,10 @@ def runProgram():
        try:
            alexaScraper.countryURLS[countryCode] = alexaScraper.getTop500ForCountry(countryCode, cookies)
        except Exception as e:
-           convertDictToJson(alexaScraper.countryURLS, "alexaTop500SitesRegional.json")
+           convertDictToJson(alexaScraper.countryURLS, "alexaTop500SitesCountries.json")
            print(e)
            return
-   convertDictToJson(alexaScraper.countryURLS, "alexaTop500SitesRegional.json")
+   convertDictToJson(alexaScraper.countryURLS, "alexaTop500SitesCountries.json")
 
 
 
