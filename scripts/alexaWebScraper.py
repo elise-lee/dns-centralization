@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-# Scrapes Alexa site for Top 500 URLS from 20 out of 123 countries
+# Scrapes Alexa site for Top 500 URLS for 115 countries
 class AlexaScraper():
     def __init__(self):
         self.baseURL = "https://www.alexa.com/topsites/"
