@@ -40,7 +40,7 @@ class OverlapCalculator():
         return globalURLS
 
     # Populates self.countryURLS from JSON
-    def getAlexaTop50Countries(self):
+    def getAlexaCountries(self):
         countryURLS = {}
         jsonPath = f"{self.rootDir}/data/alexaTop500SitesCountries.json"
         with open(jsonPath, mode="r") as jsonFile:
