@@ -12,8 +12,10 @@ import urllib.request
 from os.path import isfile, join
 import selenium.webdriver.remote.utils as utils
 import subprocess
-# import timepi
+import sys
 import os
+import pydig
+from pathlib import Path
 
 project_path=os.path.dirname(os.path.abspath(__file__))
 
@@ -24,29 +26,12 @@ from collections import defaultdict
 import socket
 import ssl
 
-def get_SAN(hostname):
-	# print("in find_SAN")
-	# context = ssl.create_default_context()
-
-	# with socket.create_connection((hostname, 443)) as sock:
-	#     with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-	#         # https://docs.python.org/3/library/ssl.html#ssl.SSLSocket.getpeercert
-	#         cert = ssock.getpeercert()
-
-	# subject = dict(item[0] for item in cert['subject'])
-	# print(subject['commonName'])
-
-	# subjectAltName = defaultdict(set)
-	# for type_, san in cert['subjectAltName']:
-	#     subjectAltName[type_].add(san)
-	# print("returning..")
-	# print(subjectAltName['DNS'])
-	# return subjectAltName['DNS']
+def get_SAN(website):
+	SANList=[]
 	try:
 		cmd='openssl s_client -connect '+website+':443 </dev/null 2>/dev/null | openssl x509 -noout -text | grep DNS'
 		mycmd=subprocess.getoutput(cmd)
 		list=str(mycmd).split(' DNS:')
-		SANList=[]
 		for item in list:
 			SANList.append(item[:-1])
 	except Exception as e:
@@ -128,7 +113,6 @@ class Resource_collector:
 				resource = entry["request"]["url"]
 				if resource not in self.resources:
 					self.resources.append(str(resource))
-		print(self.resources)
 		return self.resources
 
 
@@ -145,34 +129,42 @@ def get_internal_resources(website):
 	hm = Har_generator()
 	rc = Resource_collector()
 	hars = hm.get_har(website)
-	print("hars:")
-	print(hars)
+	# print("hars:")
+	# print(hars)
 	return rc.collect_resources(hars)
 
 #-----done with internal resources code ---------------------
 
 
 
-def find_CDN_from_CNAME_paper(cdn_cname,cname=True):
+def find_CDN_from_CNAME(cdn_cname,cname=True):
 	#make dict for cdn_map mapping each cdn to the cnames
 	print("in find_CDN_from_CNAME")
 	cdn_map={}
-	file1 = open('Cdn_map.txt', 'r')
+	file1 = open('cdnMap', 'r')
 	Lines = file1.readlines()
 
 	# Strips the newline character
 	for line in Lines:
 		cdn=line.split(",")
-		# print(cdn)
+		# print(cdn[0])
 		cdn_map[cdn[0]]=[]
-		for i in range(1,len(cdn)):
-			cdn_map[cdn[0]].append(cdn[i])
-	
+		sites=cdn[1].split(" ")
+		for site in sites:
+			if '\n' in site:
+				site=site.replace('\n','')
+			cdn_map[cdn[0]].append(site)
 
 	for cdn in cdn_map.keys():
 		if cname:
-			if cdn_cname in cdn_map[cdn]:
-				return cdn
+			for cn in cdn_map[cdn]:
+				if cn is not '':
+					if cdn_cname in cn:
+						print("cdn_cname:"+cdn_cname+" in cn:"+cn)
+						return cdn
+					if cn in cdn_cname:
+						print("cdn_cname:"+cdn_cname+" in cn:"+cn)
+						return cdn
 		else:
 			if cdn==cdn_cname:
 				return cdn_map[cdn]
@@ -273,7 +265,7 @@ class Url_processor:
 							
 			f.close()
 
-def find_CDN_from_CNAME(cname):
+def find_CDN_from_CNAME_Rashna(cname):
 	up=Url_processor(None,cname)
 	cdn_mapping=up.find_cdn()
 	for cdn in cdn_mapping.keys():
@@ -301,15 +293,23 @@ def CDN_centralization(websites_array):
 
 def get_CNAMES(website):
 	print("in get_CNAMES\n")
+	print("querying the website: "+website)
+	# cnames=subprocess.check_output(['dig',website,'CNAME'])
+	# cnames=str(cnames,"utf-8")
+	# print(cnames)
+	print(url_to_domain(website))
+	return True,[]
 	try:
-		# result = dns.resolver.resolve(website, 'CNAME')
-		# for cnameval in result:
-		# 	cnames.append(str(cnameval))
-		# 	# print(' cname target address:'+ cnameval.target)
-		# print("cnames: ")
-		# print(cnames)
-		cnames=subprocess.check_output(['dig',"cname",website])
+		print("in try!!")
+		cnames=subprocess.check_output(['dig',website+'.'])
 		cnames=str(cnames,"utf-8")
+		print(cnames)
+		if "ANSWER: 0" in cnames:
+			print("answer 0")
+			return False, []
+		else:
+			print(cnames)
+			return True
 		if 'cname' in cnames:
 			print("cname present")
 			array=cnames.split()
@@ -321,24 +321,18 @@ def get_CNAMES(website):
 				if i=='cname':
 					check=1
 		else:
-			print("cname not present - returning domain instead")
-			return False,[url_to_domain(website)]
+			# print("cname not present - returning domain instead")
+			return False,[]
 	except:
-		print("in except of cname -- returning domain instead")
-		return False,[url_to_domain(website)]
+		# print("in except of cname -- returning domain instead")
+		return False,[]
 
 
 
 def get_tld(website):
-	print("in get tld")
-	#check
 	tld = tldextract.extract(website)
+	print("tld is "+tld.domain)
 	return tld.domain
-	# domain = tld.domain + "." + tld.suffix
-	# output = subprocess.check_output(['dig', "ns","@8.8.8.8",domain])
-	# output = str(output,"utf-8")
-	# print(output)
-	# return output
 
 
 def if_https(website):
@@ -354,31 +348,55 @@ def if_https(website):
 
 def CDN_private_third(cdn,website):
 	print ("in private third")
+	resolver = dns.resolver.Resolver()
+
 	#isHTTPS?
 	#SAN?
 	#if for all cnames then wont third_party keep changing? whats the point
 	third_party=None
 	find_CDN=False
-	_,cnames=get_CNAMES(website)
-	print("cnames for private third")
+	cnames=find_CDN_from_CNAME(cdn,False)
+	# print("cnames for private third")
 	for cname in cnames:
-		if get_tld(cname)==get_tld(website):
+		print("cname: "+cname)
+		cn_tld=get_tld(cname)
+		if cn_tld==get_tld(website):
 			print("tlds are the same")
 			return False
-		if get_tld(cname) in get_SAN(website):
-			return False
+
+		SANList=get_SAN(website)
+		for san in SANList:
+			if cn_tld in san:
+				return False
+
 		try:
-			answer = dns.resolver.query(cname, 'SOA', raise_on_no_answer=False)
-			if answer.rrset is None:
-			   soa_ns=str(answer.response.authority[0]).split(" ")[0]
-
-			soa_w_answers = dns.resolver.query(website,'SOA')
+			soa_w_answers = resolver.query(website,'SOA')
 			soa_w=soa_w_answers[0].mname
+			print("soa_w: "+str(soa_w))
+			try:
+				# cn=subprocess.check_output(['dig',website,'SOA'])
+				# if 'ANSWER: 1' in cn:
 
-			if soa_w!=soa_ns:
-				return True
+				# cn=str(output,"utf-8")
+				# print(cn)
+				# return None
+				answer = resolver.query(cname, 'SOA')
+				soa_cname=answer[0].mname
+				print("soa_cname: " + str(soa_cname))
+				if soa_w!=soa_cname:
+					return True
+				else:
+					return False
+				# if answer.rrset is None:
+				#    soa_ns=str(answer.response.authority[0]).split(" ")[0]
+			except Exception as e:
+				print("error on cname")
+
 		except Exception as e:
-			print ("error",website,ns, str(e))
+			print("error on website")
+
+			
+
 
 	return third_party
 
@@ -388,16 +406,8 @@ def CDN_private_third(cdn,website):
 
 def read_websites_country(country,filename):
 	f = open(filename,'r') 
-  
-	# returns JSON object as  
-	# a dictionary 
 	data = json.load(f) 
-	  
-	# Iterating through the json 
-	# list 
 	websites=data[country]
-	  
-	# Closing file 
 	f.close()
 	return websites
 
@@ -423,87 +433,102 @@ def dump_json(data, fn):
     with open(fn, 'w') as fp:
         json.dump(data, fp)
 
-def main():
+def main(argv):
 	#set country
-	countries=['AL']
-	filename='/Users/sanaasif/Downloads/dns-centralization/data/alexaTop500SitesCountries.json'
+	country=argv[1]
+	filename='../data/alexaTop500SitesCountries.json'
 
 	critical_dependency={}
-	third_party={}
 	cdns_popularity={}
-	num=30
-	i=0
+	total_cdns={}
+	num=10
+	website_iter=0
 
-	for country in countries:
-		websites=read_websites_country(country,filename)
-		cdns_popularity[country]={}
-		critical_dependency[country]={}
-		third_party[country]={}
-		for website in websites:
-			i+=1
-			if i==num+1:
-				break
-			print("country: "+country+" ,website: "+website+" ,num: "+str(i))
-			internal_resources=get_internal_resources(website)
-			cnames=[]
-			for resource in internal_resources:
-				_,cn=get_CNAMES(resource)
-				print("CN!!!!!")
-				print(cn)
-				for _cn in cn:
-					if 'www.' in _cn:
-						_cn=_cn.replace('www.','')
-					if 'https://' in _cn:
-						_cn=_cn.replace('https://','')
-					if _cn not in cnames:
-						cnames.append(_cn)
+	websites=read_websites_country(country,filename)
+	cdns_popularity[country]={}
+	critical_dependency[country]={}
+	total_cdns[country]={}
+	for website in websites:
+		if website_iter==num:
+			break
+		website_iter+=1
+		total_cdns[country][website]={}
+		print("country: "+country+" ,website: "+website+" ,num: "+str(website_iter))
+		internal_resources=get_internal_resources(website)
+		cnames=[]
+		cnames.append(url_to_domain(website))
+		for resource in internal_resources:
+			domain=url_to_domain(resource)
+			if domain not in cnames:
+				cnames.append(domain)
+			# present,cn=get_CNAMES(resource)
+			# if present:
+			# 	for _cn in cn:
+			# 		if 'www.' in _cn:
+			# 			_cn=_cn.replace('www.','')
+			# 		if 'https://' in _cn:
+			# 			_cn=_cn.replace('https://','')
+			# 		if _cn not in cnames:
+			# 			cnames.append(_cn)
 
-			cdns=[]
-			print(cnames)
-			for cname in cnames:
-				cdn=find_CDN_from_CNAME(cname)
-				if cdn not in cdns:
-					if cdn!=None:
-						cdns.append(cdn)
-						if cdn in cdns_popularity[country].keys():
-							cdns_popularity[country][cdn]+=1
-						else:
-							cdns_popularity[country][cdn]=1
 
-			print("cdns: ")
-			print(cdns)
-			if len(cdns)==1:
-				if cdns[0] in critical_dependency[country]:
-					critical_dependency[country][cdns[0]]['yes']+=1
-				else:
-					critical_dependency[country][cdns[0]]={'yes':1,'no':0}
+		for i in range(len(cnames)):
+			if 'www.' in cnames[i]:
+				cnames[i]=cnames[i].replace('www.','')
 
-				if website not in third_party[country]:
-					third_party[country][website]={}
-				tp=CDN_private_third(cdns[0],website)
-				third_party[country][website]={cdns[0]:tp}
-
-			else:
-				for cdn in cdns:
-					if cdn in critical_dependency[country]:
-						critical_dependency[country][cdn]['no']+=1
+		# continue
+		cdns=[]
+		print(cnames)
+		for cname in cnames:
+			cdn=find_CDN_from_CNAME(cname,True)
+			if cdn not in cdns:
+				if cdn!=None:
+					cdns.append(cdn)
+					if cdn in cdns_popularity[country].keys():
+						cdns_popularity[country][cdn]+=1
 					else:
-						critical_dependency[country][cdn]={'yes':0,'no':1}
+						cdns_popularity[country][cdn]=1
 
-				dump_json(third_party,'third_party_'+country+'.json')
-				dump_json(critical_dependency,'critical_dependency_'+country+'.json')
-				dump_json(cdns_popularity,'cdns_popularity_'+country+'.json')
-			
-			print("third_party")
-			print(third_party[country])
-			print("critical_dependency")
-			print(critical_dependency[country])
-			print("cdn popularity")
-			print(cdns_popularity[country])
+		print("cdns: ")
+		print(cdns)
+		for cdn in cdns:
+			if CDN_private_third(cdn,website)==True:
+				total_cdns[country][website][cdn]='Third-Party'
+			elif CDN_private_third(cdn,website)==False:
+				total_cdns[country][website]='Private'
+			else:
+				total_cdns[country][website]='Unknown'
+
+		if len(cdns)==1:
+			if cdns[0] in critical_dependency[country]:
+				critical_dependency[country][cdns[0]]['yes']+=1
+			else:
+				critical_dependency[country][cdns[0]]={'yes':1,'no':0}
 
 
-		#checking for most popular cdn:
-		cdn,percentage=popular_cdns(cdns_popularity[country])
+		else:
+			for cdn in cdns:
+				if cdn in critical_dependency[country]:
+					critical_dependency[country][cdn]['no']+=1
+				else:
+					critical_dependency[country][cdn]={'yes':0,'no':1}
+
+
+
+		dump_json(total_cdns,'results/total_cdns'+country+'.json')
+		dump_json(critical_dependency,'results/critical_dependency_'+country+'.json')
+		dump_json(cdns_popularity,'results/cdns_popularity_'+country+'.json')
+		
+		print("critical_dependency")
+		print(critical_dependency[country])
+		print("cdn popularity")
+		print(cdns_popularity[country])
+
+
+		# cdn,percentage=popular_cdns(cdns_popularity[country])
+		
+
+
 		# print("country "+country+"s most popular CDN is " + cdn + " with a percentage of "+str(percentage)+" websites hosted on it")
 
 		#aggregate third_party info for all websites in a country.. and then for all countries in a particular set and then check percentage
@@ -526,7 +551,7 @@ def main():
 	#Questions:
 	#what to do when process name is long and weird and doesnt give a cname..?
 if __name__ == "__main__":
-    main()
+    main(sys.argv)
 
 
 
