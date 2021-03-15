@@ -64,7 +64,7 @@ class Har_generator:
 	# takes a site url
 	# returns a json har object
 	def get_har(self, site):
-		print("in get_har")
+		# print("in get_har")
 		
 		try:
 			name = site
@@ -84,7 +84,7 @@ class Har_generator:
 		x = 0
 		hars = []
 		for site in sites:
-			print("%d: Working on %s" % (x, site))
+			# print("%d: Working on %s" % (x, site))
 			har = self.get_har(site)
 			hars.append(har)
 			self.hars.append(har)
@@ -96,7 +96,7 @@ class Resource_collector:
 		self.resources = []
 
 	def dump(self, fn_prefix,country):
-		print(join(fn_prefix,"alexaResources"+country+".json"))	
+		# print(join(fn_prefix,"alexaResources"+country+".json"))	
 		utils.dump_json(self.resources, join(fn_prefix,"alexaResources"+country+".json"))
 
 		# utils.dump_json(self.resources, join(project_path,fn_prefix,"alexaResources"+country+".json"))
@@ -106,7 +106,7 @@ class Resource_collector:
 	# takes a list of har json objects
 	# stores in the object resources
 	def collect_resources(self, har):
-		print("in collect resources")
+		# print("in collect resources")
 		# for har in hars:
 		if har and "log" in har.keys() and "entries" in har["log"].keys():
 			for entry in har["log"]["entries"]:
@@ -118,7 +118,7 @@ class Resource_collector:
 
 
 def get_internal_resources(website):
-	print("in find_internal_resources")
+	# print("in find_internal_resources")
 	#phantomjs to render resources
 		#tld matching
 		#SAN list of the SSL certificate 
@@ -139,7 +139,7 @@ def get_internal_resources(website):
 
 def find_CDN_from_CNAME(cdn_cname,cname=True):
 	#make dict for cdn_map mapping each cdn to the cnames
-	print("in find_CDN_from_CNAME")
+	# print("in find_CDN_from_CNAME")
 	cdn_map={}
 	file1 = open('cdnMap', 'r')
 	Lines = file1.readlines()
@@ -155,18 +155,23 @@ def find_CDN_from_CNAME(cdn_cname,cname=True):
 				site=site.replace('\n','')
 			cdn_map[cdn[0]].append(site)
 
+	# print("keys: ", cdn_map.keys())
+	# print("cdn_cname: ", cdn_cname)
 	for cdn in cdn_map.keys():
 		if cname:
 			for cn in cdn_map[cdn]:
 				if cn is not '':
 					if cdn_cname in cn:
-						print("cdn_cname:"+cdn_cname+" in cn:"+cn)
+						# print("cdn_cname:"+cdn_cname+" in cn:"+cn)
 						return cdn
 					if cn in cdn_cname:
-						print("cdn_cname:"+cdn_cname+" in cn:"+cn)
+						# print("cdn_cname:"+cdn_cname+" in cn:"+cn)
 						return cdn
 		else:
+			# print("hellooooo")
 			if cdn==cdn_cname:
+				# print("here")
+				# print(cdn_map[cdn])
 				return cdn_map[cdn]
 	return None
 
@@ -292,8 +297,8 @@ def CDN_centralization(websites_array):
 
 
 def get_CNAMES(website):
-	print("in get_CNAMES\n")
-	print("querying the website: "+website)
+	# print("in get_CNAMES\n")
+	# print("querying the website: "+website)
 	# cnames=subprocess.check_output(['dig',website,'CNAME'])
 	# cnames=str(cnames,"utf-8")
 	# print(cnames)
@@ -303,15 +308,15 @@ def get_CNAMES(website):
 		print("in try!!")
 		cnames=subprocess.check_output(['dig',website+'.'])
 		cnames=str(cnames,"utf-8")
-		print(cnames)
+		# print(cnames)
 		if "ANSWER: 0" in cnames:
-			print("answer 0")
+			# print("answer 0")
 			return False, []
 		else:
-			print(cnames)
+			# print(cnames)
 			return True
 		if 'cname' in cnames:
-			print("cname present")
+			# print("cname present")
 			array=cnames.split()
 			check=0
 			for i in array:
@@ -331,12 +336,12 @@ def get_CNAMES(website):
 
 def get_tld(website):
 	tld = tldextract.extract(website)
-	print("tld is "+tld.domain)
+	# print("tld is "+tld.domain)
 	return tld.domain
 
 
 def if_https(website):
-	print ("in if https")
+	# print ("in if https")
 	try:
 		output = subprocess.check_output(["bash", 'https/check.sh',website])
 		# print(output)
@@ -347,7 +352,7 @@ def if_https(website):
 
 
 def CDN_private_third(cdn,website):
-	print ("in private third")
+	# print ("in private third")
 	resolver = dns.resolver.Resolver()
 
 	#isHTTPS?
@@ -356,12 +361,13 @@ def CDN_private_third(cdn,website):
 	third_party=None
 	find_CDN=False
 	cnames=find_CDN_from_CNAME(cdn,False)
-	# print("cnames for private third")
+	print("cnames for private third")
+	# print(cnames)
 	for cname in cnames:
-		print("cname: "+cname)
+		# print("cname: "+cname)
 		cn_tld=get_tld(cname)
 		if cn_tld==get_tld(website):
-			print("tlds are the same")
+			# print("tlds are the same")
 			return False
 
 		SANList=get_SAN(website)
@@ -372,7 +378,7 @@ def CDN_private_third(cdn,website):
 		try:
 			soa_w_answers = resolver.query(website,'SOA')
 			soa_w=soa_w_answers[0].mname
-			print("soa_w: "+str(soa_w))
+			# print("soa_w: "+str(soa_w))
 			try:
 				# cn=subprocess.check_output(['dig',website,'SOA'])
 				# if 'ANSWER: 1' in cn:
@@ -382,7 +388,7 @@ def CDN_private_third(cdn,website):
 				# return None
 				answer = resolver.query(cname, 'SOA')
 				soa_cname=answer[0].mname
-				print("soa_cname: " + str(soa_cname))
+				# print("soa_cname: " + str(soa_cname))
 				if soa_w!=soa_cname:
 					return True
 				else:
@@ -412,7 +418,7 @@ def read_websites_country(country,filename):
 	return websites
 
 def popular_cdns(cdns_popularity):
-	print(cdns_popularity)
+	# print(cdns_popularity)
 	sorted_cdns=sorted(cdns_popularity.items(), key=lambda x: x[1], reverse=True)
 	# sorted_cdns={k: v for k, v in sorted(cdns_popularity.items(), key=lambda item: item[1], reverse=True)}
 	i=0
@@ -449,8 +455,8 @@ def main(argv):
 	critical_dependency[country]={}
 	total_cdns[country]={}
 	for website in websites:
-		if website_iter==num:
-			break
+		# if website_iter==num:
+		# 	break
 		website_iter+=1
 		total_cdns[country][website]={}
 		print("country: "+country+" ,website: "+website+" ,num: "+str(website_iter))
@@ -478,7 +484,7 @@ def main(argv):
 
 		# continue
 		cdns=[]
-		print(cnames)
+		# print(cnames)
 		for cname in cnames:
 			cdn=find_CDN_from_CNAME(cname,True)
 			if cdn not in cdns:
@@ -489,15 +495,15 @@ def main(argv):
 					else:
 						cdns_popularity[country][cdn]=1
 
-		print("cdns: ")
-		print(cdns)
+
 		for cdn in cdns:
-			if CDN_private_third(cdn,website)==True:
-				total_cdns[country][website][cdn]='Third-Party'
-			elif CDN_private_third(cdn,website)==False:
-				total_cdns[country][website]='Private'
+			private_third=CDN_private_third(cdn,website)
+			if private_third==True:
+				total_cdns[country][website][cdn]="ThirdParty"
+			elif private_third==False:
+				total_cdns[country][website][cdn]='Private'
 			else:
-				total_cdns[country][website]='Unknown'
+				total_cdns[country][website][cdn]='Unknown'
 
 		if len(cdns)==1:
 			if cdns[0] in critical_dependency[country]:
