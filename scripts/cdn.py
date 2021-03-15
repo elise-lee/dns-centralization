@@ -525,9 +525,9 @@ def main(argv):
 
 
 
-		dump_json(total_cdns,'results/total_cdns'+country+'.json')
-		dump_json(critical_dependency,'results/critical_dependency_'+country+'.json')
-		dump_json(cdns_popularity,'results/cdns_popularity_'+country+'.json')
+		dump_json(total_cdns,'Results/total_cdns'+country+'.json')
+		dump_json(critical_dependency,'Results/critical_dependency_'+country+'.json')
+		dump_json(cdns_popularity,'Results/cdns_popularity_'+country+'.json')
 		
 		print("critical_dependency")
 		print(critical_dependency[country])
