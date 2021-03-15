@@ -54,7 +54,7 @@ class Har_generator:
 		options.add_argument("--headless")
 		options.add_argument("--no-cache")
 
-		self.driver = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
+		self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
 	def __del__(self):
 		self.server.stop()
@@ -117,7 +117,7 @@ class Resource_collector:
 
 
 
-def get_internal_resources(website):
+def get_internal_resources(website,hm):
 	# print("in find_internal_resources")
 	#phantomjs to render resources
 		#tld matching
@@ -126,7 +126,6 @@ def get_internal_resources(website):
 		#SOA records
 
 	#OR use hars to find resources!
-	hm = Har_generator()
 	rc = Resource_collector()
 	hars = hm.get_har(website)
 	# print("hars:")
@@ -160,7 +159,7 @@ def find_CDN_from_CNAME(cdn_cname,cname=True):
 	for cdn in cdn_map.keys():
 		if cname:
 			for cn in cdn_map[cdn]:
-				if cn is not '':
+				if cn!='':
 					if cdn_cname in cn:
 						# print("cdn_cname:"+cdn_cname+" in cn:"+cn)
 						return cdn
@@ -449,6 +448,8 @@ def main(argv):
 	total_cdns={}
 	num=10
 	website_iter=0
+	hm = Har_generator()
+
 
 	websites=read_websites_country(country,filename)
 	cdns_popularity[country]={}
@@ -460,7 +461,10 @@ def main(argv):
 		website_iter+=1
 		total_cdns[country][website]={}
 		print("country: "+country+" ,website: "+website+" ,num: "+str(website_iter))
-		internal_resources=get_internal_resources(website)
+		internal_resources=get_internal_resources(website,hm)
+		if internal_resources==None:
+			hm=Har_generator()
+			internal_resources=get_internal_resources(website,hm)
 		cnames=[]
 		cnames.append(url_to_domain(website))
 		for resource in internal_resources:
