@@ -56,7 +56,7 @@ def convertDictToJson(dict, jsonFileName):
 
 def runProgram():
 
-   # Hardcodes cookies to scrape top 500 URLS for each country. Stops working after 20 countries.
+   # Hardcodes cookies to scrape top 500 URLS for each country.
    # Must hardcode your own cookies (after logging in)
    cookies = {
         "session_key": "gOc7EFh0%2Bctah5oMrngehl7ND2wdP8TkQArghbsJ01NETC%2F1L9%2Bjz5GT%2Fvc2qtf%2B5Jmt4TnHo0I8ONxw6kIxGDNLwnXrYv7NLUzY9i4eG1IDLO4XNw0hz3WdKp5hbg%2FubMM6jiM68Kpnx5r9zPmL%2BUdy97mAAbnukOS%2BGYGt3syZZIrceE5ksRZ70pO300RFwiOMQKrwqBVBOHTQWi%2FubCQaZInWu%2FJ31435NOCJGck%3D",

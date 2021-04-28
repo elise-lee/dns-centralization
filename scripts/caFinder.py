@@ -101,7 +101,7 @@ class CAFinder:
             else:
                 OSCP = False
 
-            return rootCA.strip(), OSCP
+            return rootCA.strip().splitlines()[0], OSCP
 
         except Exception as e:
             # print("openssl error in root_ca with", website, e)
@@ -207,12 +207,16 @@ def getCACentralization(countryCode):
 
 # RUN PROGRAM (CALL SCRIPTS) -------------------------------------------------
 def runProgram():
-    countryCode = "HU"
-    print(f"STARTING FOR {countryCode}:")
-    start = time.time()
-    getCACentralization(countryCode)
-    end = time.time()
-    print(f"Execution took {round((end-start)/60)} minutes")
+    with open("../data/nordAndAlexaCountryCodes.txt", "r") as inFile:
+        countryCodes = inFile.readlines()
+
+    for countryCode in ["DE", "BR", "NL", "FR", "CH", "BE", "CZ", "MD", "GE", "ES", "IT", "BG", "EE", "GE", "TH"]:
+        countryCode = countryCode.rstrip()
+        print(f"STARTING FOR {countryCode}:")
+        start = time.time()
+        getCACentralization(countryCode)
+        end = time.time()
+        print(f"Execution took {round((end-start)/60)} minutes")
 
 
 if __name__ == "__main__":
